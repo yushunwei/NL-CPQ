@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===================== 用户与认证 =====================
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(SALES)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  quotes       Quote[]
+  quoteHistory QuoteHistory[]
+}
+
+enum Role {
+  ADMIN
+  SALES
+  MANAGER
+}
+
+// ===================== 产品定义 =====================
+model ProductCategory {
+  id        Int                @id @default(autoincrement())
+  name      String
+  slug      String             @unique
+  parentId  Int?
+  parent    ProductCategory?   @relation("CategoryTree", fields: [parentId], references: [id])
+  children  ProductCategory[]  @relation("CategoryTree")
+  products  Product[]
+  sortOrder Int                @default(0)
+}
+
+model Product {
+  id           Int              @id @default(autoincrement())
+  sku          String           @unique
+  name         String
+  description  String?
+  basePrice    Decimal          @db.Decimal(12, 2)
+  currency     String           @default("EUR")
+  categoryId   Int
+  category     ProductCategory  @relation(fields: [categoryId], references: [id])
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  standardSpecs   StandardSpec[]
+  optionGroups    OptionGroup[]
+  dependencyRules DependencyRule[]
+  quotes          Quote[]
+}
+
+model StandardSpec {
+  id          Int     @id @default(autoincrement())
+  productId   Int
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  description String
+  sortOrder   Int     @default(0)
+}
+
+// ===================== 配置引擎 =====================
+model OptionGroup {
+  id            Int           @id @default(autoincrement())
+  productId     Int
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  isRequired    Boolean       @default(false)
+  isMultiSelect Boolean       @default(false)
+  sortOrder     Int           @default(0)
+  optionValues  OptionValue[]
+  dependencyRules DependencyRule[]
+  quoteItems    QuoteItem[]
+}
+
+model OptionValue {
+  id            Int         @id @default(autoincrement())
+  optionGroupId Int
+  optionGroup   OptionGroup @relation(fields: [optionGroupId], references: [id], onDelete: Cascade)
+  label         String
+  priceDelta    Decimal     @default(0) @db.Decimal(12, 2)
+  isDefault     Boolean     @default(false)
+  sortOrder     Int         @default(0)
+
+  sourceRules DependencyRule[] @relation("SourceOption")
+  targetRules DependencyRule[] @relation("TargetOption")
+  quoteItems   QuoteItem[]
+}
+
+model DependencyRule {
+  id                  Int          @id @default(autoincrement())
+  productId           Int
+  product             Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ruleType            RuleType
+  sourceOptionValueId Int
+  sourceOptionValue   OptionValue  @relation("SourceOption", fields: [sourceOptionValueId], references: [id], onDelete: Cascade)
+  targetOptionGroupId Int
+  targetOptionGroup   OptionGroup  @relation(fields: [targetOptionGroupId], references: [id], onDelete: Cascade)
+  targetOptionValueId Int?
+  targetOptionValue   OptionValue? @relation("TargetOption", fields: [targetOptionValueId], references: [id])
+}
+
+enum RuleType {
+  REQUIRES
+  EXCLUDES
+  ALLOW_ONLY
+}
+
+// ===================== 报价 =====================
+model Quote {
+  id            Int          @id @default(autoincrement())
+  quoteNumber   String       @unique
+  productId     Int
+  product       Product      @relation(fields: [productId], references: [id])
+  customerName  String
+  numberOfUnits Int          @default(1)
+  status        QuoteStatus  @default(DRAFT)
+  subtotal      Decimal      @db.Decimal(12, 2)
+  discountTotal Decimal      @default(0) @db.Decimal(12, 2)
+  total         Decimal      @db.Decimal(12, 2)
+  currency      String       @default("EUR")
+  quotationDate DateTime     @default(now())
+  validUntil    DateTime?
+  notes         String?
+  createdById   String
+  createdBy     User         @relation(fields: [createdById], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  items     QuoteItem[]
+  discounts QuoteDiscount[]
+  history   QuoteHistory[]
+}
+
+model QuoteItem {
+  id            Int         @id @default(autoincrement())
+  quoteId       Int
+  quote         Quote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  optionGroupId Int
+  optionGroup   OptionGroup @relation(fields: [optionGroupId], references: [id])
+  optionValueId Int
+  optionValue   OptionValue @relation(fields: [optionValueId], references: [id])
+  priceDelta    Decimal     @db.Decimal(12, 2)
+}
+
+model QuoteDiscount {
+  id      Int          @id @default(autoincrement())
+  quoteId Int
+  quote   Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  name    String
+  type    DiscountType
+  value   Decimal      @db.Decimal(12, 2)
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model QuoteHistory {
+  id          Int      @id @default(autoincrement())
+  quoteId     Int
+  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  version     Int
+  snapshot    Json
+  changedById String
+  changedBy   User     @relation(fields: [changedById], references: [id])
+  changeNote  String?
+  createdAt   DateTime @default(now())
+}

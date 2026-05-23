@@ -1,0 +1,33 @@
+{
+  "name": "noblelift-cpq",
+  "version": "1.0.0",
+  "private": true,
+  "description": "诺力CPQ选配器（Noblelift CPQ）",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev -w server",
+    "dev:client": "npm run dev -w client",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build:server": "npm run build -w server",
+    "build:client": "npm run build -w client",
+    "build": "npm run build:server && npm run build:client",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "init-data": "tsx prisma/seed.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "prisma": "~6.15.0",
+    "tesseract.js": "^5.1.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}
