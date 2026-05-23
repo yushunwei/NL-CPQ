@@ -79,6 +79,62 @@ NL-CPQ/
 │       └── DashboardView.vue      # 概览统计
 ```
 
+## Git 分支与 Tag 管理
+
+### 分支策略
+
+```
+main          ← 生产就绪，每次合并即视为一个 release
+  └── dev     ← 日常开发集成分支
+        ├── feature/*   ← 新功能分支
+        └── fix/*       ← Bug 修复分支
+```
+
+| 分支 | 用途 | 生命周期 |
+|------|------|---------|
+| `main` | 稳定版本，可随时部署 | 永久 |
+| `dev` | 日常开发集成 | 永久 |
+| `feature/*` | 新功能，从 `dev` 切出，合回 `dev` | 合后删除 |
+| `fix/*` | Bug 修复，从 `dev` 切出，紧急修复从 `main` 切 | 合后删除 |
+| `release/*` | 发版准备（可选），从 `dev` 切，合回 `main` + `dev` | 合后删除 |
+
+**开发流程：**
+```bash
+# 新功能
+git checkout dev
+git checkout -b feature/ocr-upload
+# ... 开发、提交 ...
+git checkout dev && git merge feature/ocr-upload
+git push origin dev
+git branch -d feature/ocr-upload && git push origin --delete feature/ocr-upload
+
+# 发版
+git checkout main && git merge dev
+git tag v0.2.0
+git push origin main --tags
+```
+
+**注意：** `main` 受分支保护，禁止直接 push，必须通过 PR/MR 合并。
+
+### Tag 策略（语义化版本）
+
+格式：**`v<major>.<minor>.<patch>`**
+
+| 版本号 | 触发场景 | 示例 |
+|--------|---------|------|
+| Patch (`v0.1.1`) | Bug 修复、文案调整 | fix sticky panel |
+| Minor (`v0.2.0`) | 新功能、新页面 | OCR 上传功能 |
+| Major (`v1.0.0`) | 首次交付、不兼容变更 | 第一个可交付版本 |
+
+### 里程碑规划
+
+| Tag | 里程碑 |
+|-----|--------|
+| `v0.1.0` | 当前：前后台框架 + 选配报价 + PDF |
+| `v0.2.0` | OCR 识别 + 自动填单 |
+| `v0.3.0` | 多价格表 + 审批流 |
+| `v1.0.0` | 首个正式交付版本 |
+
 ## 路由结构
 
 ```
